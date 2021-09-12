@@ -1,5 +1,24 @@
 <?php
- 
+    include_once("config.php");
+    try{
+        $db = new PDO("mysql:host=$mysql_host;dbname=$mysql_dbname", "$mysql_user", "$mysql_password");
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    }
+    catch(PDOException $e){
+        die("MySQL ERROR!");
+    }
+    if(isset($_POST["reg_submit"])){
+        $register= $db->prepare("INSERT INTO users(USER_NAME, USER_SURNAME, USER_EMAIL, USER_PASSWORD) VALUES(:new_name, :new_surname, :new_email, :new_password)");
+
+        $sorgu->execute(
+            array(
+                ':new_name' => $_POST['user_name'],
+                ':new_surname' => $_POST['user_surname'],
+                ':new_email' => $_POST['user_email'],
+                ':new_password' => $_POST['user_pasword']
+            )
+        );
+    }
 ?>
 
 <!doctype html>
@@ -24,10 +43,10 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
                 <div class="navbar-nav">
-                    <a class="nav-link active" aria-current="page" href="#">Home</a>
-                    <a class="nav-link" href="#">Register</a>
-                    <a class="nav-link" href="#">Login</a>
-                    <a class="nav-link" href="#">Upload File</a>
+                    <a class="nav-link active" aria-current="page" href="/?home">Home</a>
+                    <a class="nav-link" href="/?register">Register</a>
+                    <a class="nav-link" href="/?login">Login</a>
+                    <a class="nav-link" href="/?upload">Upload File</a>
                 </div>
                 </div>
             </div>
@@ -36,6 +55,7 @@
     <!-- Navbar -->
 
     <main>
+    <?php if(isset($_GET['register'])){ ?>
     <!-- Section Register -->
     <section class="bg-primary" id="register">
         <div class="container py-5">
@@ -45,34 +65,36 @@
             </div>
             <div class="row">
                 <div class="col-8 offset-2">
-                    <form>
+                    <form action="/index.php" method="POST">
                         <div class="mb-3">
-                            <label for="exampleInputEmail1" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                            <label for="user_name" class="form-label">Name</label>
+                            <input type="text" class="form-control" name="user_name" id="user_name" aria-describedby="nameHelp">
                         </div>
                         <div class="mb-3">
-                            <label for="exampleInputEmail1" class="form-label">SurName</label>
-                            <input type="text" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                            <label for="user_surname" class="form-label">SurName</label>
+                            <input type="text" class="form-control" name="user_surname" id="user_surname" aria-describedby="surnameHelp">
                         </div>
                         <div class="mb-3">
-                            <label for="exampleInputEmail1" class="form-label">Email address</label>
-                            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                            <label for="user_email" class="form-label">Email address</label>
+                            <input type="email" class="form-control" name="user_email" id="user_email" aria-describedby="emailHelp">
                         </div>
                         <div class="mb-3">
-                            <label for="exampleInputPassword1" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="exampleInputPassword1">
+                            <label for="user_password" class="form-label">Password</label>
+                            <input type="password" class="form-control" name="user_password" id="user_password">
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                            <label class="form-check-label" for="exampleCheck1">Remember me</label>
+                            <input type="checkbox" class="form-check-input" name="user_check" id="user_check">
+                            <label class="form-check-label" for="user_check">Remember me</label>
                         </div>
-                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <button type="submit" class="btn btn-primary" name="reg_submit" value="reg_submit">Submit</button>
                     </form>
                 </div>
             </div>
         </div>
     </section>
     <!-- Section Register -->
+
+    <?php }elseif(isset($_GET['register'])){ ?>
 
     <!-- Section Login -->
     <section class="bg-warning" id="login">
@@ -103,6 +125,8 @@
         </div>
     </section>
     <!-- Section Login -->
+
+    <?php }elseif(isset($_GET['upload'])){ ?>
 
     <!-- Section File upload -->
     <section class="bg-success" id="login">
@@ -137,6 +161,8 @@
         </div>
     </section>
     <!-- Section File upload -->
+
+    <?php }elseif(isset($_GET['home'])){ ?>
 
     <!-- Section User Home -->
     <section class="bg-info" id="login">
@@ -204,13 +230,39 @@
                                 <button type="button" class="btn btn-primary"><i class="bi bi-share"></i></button>
                             </div>
                         </div>
+                        <div class="col-7">MyFileName.ext  (0000 KB)</div>
+                        <div class="col-5">
+                            <div class="btn-group" role="group" aria-label="Basic mixed styles example">
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#exampleModal"><i class="bi bi-trash"></i></button>
+                                <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            ...
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            <button type="button" class="btn btn-primary">Save changes</button>
+                                        </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-warning"><i class="bi bi-pencil"></i></button>
+                                <button type="button" class="btn btn-success"><i class="bi bi-link"></i></button>
+                                <button type="button" class="btn btn-primary"><i class="bi bi-share"></i></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
     <!-- Section User Home -->
-
+    <?php } ?>
     <!-- Section Footer -->
         <footer class="footer mt-auto py-3 bg-light">
             <div class="container">
@@ -224,3 +276,7 @@
 
   </body>
 </html>
+
+<?php
+    $db = null;
+?>
