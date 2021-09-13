@@ -4,20 +4,51 @@
     function post($value){
         return strip_tags(trim($_POST[$value]));
     }
-    if(empty($_GET) || empty($_GET['page'])){
-        $_GET['page'] = 'home';
+    function logout(){
+        session_destroy();
+        setcookie("LOGIN__", "", time()-1);
+        header('Location: /index.php?page=login');
     }
-    try{
-        $db = new PDO("mysql:host=$mysql_host;dbname=$mysql_dbname", "$mysql_user", "$mysql_password");
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
-    catch(PDOException $e){
-        die("MySQL ERROR!");
-    }
-    if(isset($_POST["reg_submit"])){
-        if(empty($_POST["user_name"]) || empty($_POST["user_surname"]) || empty($_POST["user_email"]) || empty($_POST["user_password"]))  
+    function login(){
+        if($_COOKIE["LOGIN__"]){
+            $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = '".$_COOKIE['LOGIN__']."'")->fetch();
+            $_SESSION['login'] = TRUE;
+            $_SESSION['user'] = $login;
+            $successMessage = 'Hello '.$_SESSION['user']['USER_NAME'];
+            return TRUE;
+        }
+        if(empty($_POST["login_email"]) || empty($_POST["login_password"]))  
         {  
              $errorMessage = 'All fields are required';  
+        }
+        else{
+            $login_email = post('login_email');
+            $login_pass_cr = sha1(md5(post('login_password')));
+            $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = '$login_email' AND USER_PASSWORD = '$login_pass_cr'")->fetch();
+            if($login){
+                $_SESSION['login'] = TRUE;
+                $_SESSION['user'] = $login;
+                if(post('login_check')=='remember_me'){
+                    setcookie("LOGIN__", $login_email, time()+(3600*24*15));
+                }
+                $successMessage = 'Hello '.$_SESSION['user']['USER_NAME'];
+            }
+            else{
+                $errorMessage = "This user not found!";
+            }
+        }
+    }
+    function register(){
+        if($_COOKIE["LOGIN__"]){
+            $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = '".$_COOKIE['LOGIN__']."'")->fetch();
+            $_SESSION['login'] = TRUE;
+            $_SESSION['user'] = $login;
+            $successMessage = 'Hello '.$_SESSION['user']['USER_NAME'];
+            return TRUE;
+        }
+        if(empty($_POST["user_name"]) || empty($_POST["user_surname"]) || empty($_POST["user_email"]) || empty($_POST["user_password"]))  
+        {  
+             $errorMessage = 'All fields are required'; 
         }
         else{
             $register= $db->prepare("INSERT INTO users(USER_NAME, USER_SURNAME, USER_EMAIL, USER_PASSWORD) VALUES(:new_name, :new_surname, :new_email, :new_password)");
@@ -34,6 +65,9 @@
                 $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = ".'post("user_email")'." AND USER_PASSWORD = ".'sha1(md5(post("user_pasword")))')->fetch();
                 $_SESSION['login'] = TRUE;
                 $_SESSION['user'] = $login;
+                if(post('user_check')=='remember_me'){
+                    setcookie("LOGIN__", post('user_email'), time()+(3600*24*15));
+                }
                 $successMessage = 'Hello '.$_SESSION['user']['USER_NAME'];
             }
             else{
@@ -41,27 +75,38 @@
             }
         }
     }
-    if(isset($_POST['login_submit'])){
-        if(empty($_POST["login_email"]) || empty($_POST["login_password"]))  
-        {  
-             $errorMessage = 'All fields are required';  
-        }
-        else{
-            $login_email = post('login_email');
-            $login_pass_cr = sha1(md5(post('login_password')));
-            $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = '$login_email' AND USER_PASSWORD = '$login_pass_cr'")->fetch();
-            if($login){
-                $_SESSION['login'] = TRUE;
-                $_SESSION['user'] = $login;
-                $successMessage = 'Hello '.$_SESSION['user']['USER_NAME'];
+    function upload_file(){
+        if($_SESSION['login']){
+            if(empty($_POST["upload_fname"]) || empty($_POST["upload_password"]) || empty($_FILES["upload_file"]))  
+            {
+                $errorMessage = 'All fields are required';
             }
             else{
-                $errorMessage = "This user not found!";
+                ////
             }
         }
+        else{
+            $errorMessage = 'Login required!';
+        }
+    }
+    if(empty($_GET) || empty($_GET['page'])){
+        $_GET['page'] = 'home';
+    }
+    try{
+        $db = new PDO("mysql:host=$mysql_host;dbname=$mysql_dbname", "$mysql_user", "$mysql_password");
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    }
+    catch(PDOException $e){
+        die("MySQL ERROR!");
+    }
+    if(isset($_POST["reg_submit"])){
+       register();
+    }
+    if(isset($_POST['login_submit'])){
+        login();
     }
     if(isset($_POST['upload_submit'])){
-
+        upload_file();
     }
 ?>
 
@@ -87,10 +132,16 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
                 <div class="navbar-nav">
-                    <a class="nav-link active" aria-current="page" href="/?page=home">Home</a>
-                    <a class="nav-link" href="/?page=register">Register</a>
-                    <a class="nav-link" href="/?page=login">Login</a>
-                    <a class="nav-link" href="/?page=upload">Upload File</a>
+                    <a class="nav-link <?php if($_GET['page']=='home'){echo 'active';} ?>" aria-current="page" href="/?page=home">Home</a>
+                    <?php if(!$_SESSION['login']){ ?>
+                    <a class="nav-link <?php if($_GET['page']=='register'){echo 'active';} ?>" href="/?page=register">Register</a>
+                    <?php } ?>
+                    <a class="nav-link <?php if(!$_SESSION['login']){echo 'disabled';}  if($_GET['page']=='upload'){echo 'active';}  ?>" href="/?page=upload">Upload File</a>
+                    <?php if($_SESSION['login']){ ?>
+                        <a class="nav-link" href="/?page=logout">Logout(<?php echo $_SESSION['user']['USER_NAME'];?>)</a>
+                    <?php }else{ ?>
+                        <a class="nav-link <?php if($_GET['page']=='login'){echo 'active';} ?>" href="/?page=login">Login</a>
+                    <?php } ?>
                 </div>
                 </div>
             </div>
@@ -115,8 +166,7 @@
     <?php 
     } 
     if((isset($_GET['page'])&&$_GET['page']=='logout')){
-        session_destroy();
-        header('Location: /index.php?page=login');
+        logout();
     }
     elseif((isset($_GET['page'])&&$_GET['page']=='register')){ ?>
 
@@ -129,7 +179,7 @@
             </div>
             <div class="row">
                 <div class="col-8 offset-2">
-                    <form action="/index.php" method="POST">
+                    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="POST">
                         <div class="mb-3">
                             <label for="user_name" class="form-label">Name</label>
                             <input type="text" class="form-control" name="user_name" id="user_name" aria-describedby="nameHelp" required>
@@ -147,10 +197,10 @@
                             <input type="password" class="form-control" name="user_password" id="user_password" required>
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" name="user_check" id="user_check">
+                            <input type="checkbox" class="form-check-input" name="user_check" id="user_check" value="remember_me">
                             <label class="form-check-label" for="user_check">Remember me</label>
                         </div>
-                        <button type="submit" class="btn btn-secondary" name="reg_submit" value="reg_submit">Submit</button>
+                        <button type="submit" class="btn btn-secondary" name="reg_submit" value="reg_submit">Register</button>
                     </form>
                 </div>
             </div>
@@ -165,11 +215,11 @@
         <div class="container py-5">
             <div class="text-center">
                 <h1>Login</h1>
-                <p>Lorem ipsum door sit amet</p>
+                <p>Log in to use our services</p>
             </div>
             <div class="row">
                 <div class="col-8 offset-2">
-                    <form action="/index.php" method="POST">
+                    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="POST">
                         <div class="mb-3">
                             <label for="login_email" class="form-label">Email address</label>
                             <input type="email" class="form-control" name="login_email" id="login_email" aria-describedby="emailHelp" required>
@@ -179,10 +229,10 @@
                             <input type="password" class="form-control" name="login_password" id="login_password" required>
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" name="login_check" id="login_check">
+                            <input type="checkbox" class="form-check-input" name="login_check" id="login_check" value="remember_me">
                             <label class="form-check-label" for="login_check">Remember me</label>
                         </div>
-                        <button type="submit" name="login_submit" class="btn btn-primary">Submit</button>
+                        <button type="submit" name="login_submit" class="btn btn-primary">Login</button>
                     </form>
                 </div>
             </div>
@@ -190,7 +240,10 @@
     </section>
     <!-- Section Login -->
 
-    <?php }elseif((isset($_GET['page'])&&$_GET['page']=='upload')){ ?>
+    <?php }elseif((isset($_GET['page'])&&$_GET['page']=='upload')){
+        if(!$_SESSION['login']){
+            header('Location: /index.php?page=login');
+        } ?>
 
     <!-- Section File upload -->
     <section class="bg-success" id="login">
@@ -201,7 +254,7 @@
             </div>
             <div class="row">
                 <div class="col-8 offset-2">
-                    <form action="/index.php" method="POST">
+                    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="POST" enctype="multipart/form-data>
                         <div class="mb-3">
                             <label for="upload_file" class="form-label">File</label>
                             <input type="file" class="form-control" name="upload_file" id="upload_file" aria-describedby="emailHelp" required>
@@ -226,7 +279,10 @@
     </section>
     <!-- Section File upload -->
 
-    <?php }elseif((isset($_GET['page'])&&$_GET['page']=='home')){ ?>
+    <?php }elseif((isset($_GET['page'])&&$_GET['page']=='home')){ 
+        if(!$_SESSION['login']){
+            header('Location: /index.php?page=login');
+        } ?>
 
     <!-- Section User Home -->
     <section class="bg-info" id="login">
