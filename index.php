@@ -1,5 +1,12 @@
 <?php
     include_once("config.php");
+    session_start();
+    function post($value){
+        return strip_tags(trim($_POST[$value]));
+    }
+    if(empty($_GET) || empty($_GET['page'])){
+        $_GET['page'] = 'home';
+    }
     try{
         $db = new PDO("mysql:host=$mysql_host;dbname=$mysql_dbname", "$mysql_user", "$mysql_password");
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -8,16 +15,53 @@
         die("MySQL ERROR!");
     }
     if(isset($_POST["reg_submit"])){
-        $register= $db->prepare("INSERT INTO users(USER_NAME, USER_SURNAME, USER_EMAIL, USER_PASSWORD) VALUES(:new_name, :new_surname, :new_email, :new_password)");
+        if(empty($_POST["user_name"]) || empty($_POST["user_surname"]) || empty($_POST["user_email"]) || empty($_POST["user_password"]))  
+        {  
+             $errorMessage = 'All fields are required';  
+        }
+        else{
+            $register= $db->prepare("INSERT INTO users(USER_NAME, USER_SURNAME, USER_EMAIL, USER_PASSWORD) VALUES(:new_name, :new_surname, :new_email, :new_password)");
 
-        $sorgu->execute(
-            array(
-                ':new_name' => $_POST['user_name'],
-                ':new_surname' => $_POST['user_surname'],
-                ':new_email' => $_POST['user_email'],
-                ':new_password' => $_POST['user_pasword']
-            )
-        );
+            $register->execute(
+                array(
+                    ':new_name' => post('user_name'),
+                    ':new_surname' => post('user_surname'),
+                    ':new_email' => post('user_email'),
+                    ':new_password' => sha1(md5(post('user_pasword')))
+                )
+            );
+            if($register){
+                $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = ".'post("user_email")'." AND USER_PASSWORD = ".'sha1(md5(post("user_pasword")))')->fetch();
+                $_SESSION['login'] = TRUE;
+                $_SESSION['user'] = $login;
+                $successMessage = 'Hello '.$_SESSION['user']['USER_NAME'];
+            }
+            else{
+                $errorMessage = 'New User Register Error!'; 
+            }
+        }
+    }
+    if(isset($_POST['login_submit'])){
+        if(empty($_POST["login_email"]) || empty($_POST["login_password"]))  
+        {  
+             $errorMessage = 'All fields are required';  
+        }
+        else{
+            $login_email = post('login_email');
+            $login_pass_cr = sha1(md5(post('login_password')));
+            $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = '$login_email' AND USER_PASSWORD = '$login_pass_cr'")->fetch();
+            if($login){
+                $_SESSION['login'] = TRUE;
+                $_SESSION['user'] = $login;
+                $successMessage = 'Hello '.$_SESSION['user']['USER_NAME'];
+            }
+            else{
+                $errorMessage = "This user not found!";
+            }
+        }
+    }
+    if(isset($_POST['upload_submit'])){
+
     }
 ?>
 
@@ -43,10 +87,10 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
                 <div class="navbar-nav">
-                    <a class="nav-link active" aria-current="page" href="/?home">Home</a>
-                    <a class="nav-link" href="/?register">Register</a>
-                    <a class="nav-link" href="/?login">Login</a>
-                    <a class="nav-link" href="/?upload">Upload File</a>
+                    <a class="nav-link active" aria-current="page" href="/?page=home">Home</a>
+                    <a class="nav-link" href="/?page=register">Register</a>
+                    <a class="nav-link" href="/?page=login">Login</a>
+                    <a class="nav-link" href="/?page=upload">Upload File</a>
                 </div>
                 </div>
             </div>
@@ -55,38 +99,58 @@
     <!-- Navbar -->
 
     <main>
-    <?php if(isset($_GET['register'])){ ?>
+    <?php
+    if(isset($errorMessage)){ ?>
+        <div class="alert alert-danger alert-dismissible fade show mx-5" role="alert">
+            <strong class="ps-5"> <?php echo $errorMessage; ?> </strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php 
+    }
+    if(isset($successMessage)){ ?>
+         <div class="alert alert-success alert-dismissible fade show mx-5" role="alert">
+            <strong class="ps-5"> <?php echo $successMessage; ?> </strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php 
+    } 
+    if((isset($_GET['page'])&&$_GET['page']=='logout')){
+        session_destroy();
+        header('Location: /index.php?page=login');
+    }
+    elseif((isset($_GET['page'])&&$_GET['page']=='register')){ ?>
+
     <!-- Section Register -->
     <section class="bg-primary" id="register">
         <div class="container py-5">
             <div class="text-center">
                 <h1>Register</h1>
-                <p>Lorem ipsum door sit amet</p>
+                <p>You need to register to use our services</p>
             </div>
             <div class="row">
                 <div class="col-8 offset-2">
                     <form action="/index.php" method="POST">
                         <div class="mb-3">
                             <label for="user_name" class="form-label">Name</label>
-                            <input type="text" class="form-control" name="user_name" id="user_name" aria-describedby="nameHelp">
+                            <input type="text" class="form-control" name="user_name" id="user_name" aria-describedby="nameHelp" required>
                         </div>
                         <div class="mb-3">
                             <label for="user_surname" class="form-label">SurName</label>
-                            <input type="text" class="form-control" name="user_surname" id="user_surname" aria-describedby="surnameHelp">
+                            <input type="text" class="form-control" name="user_surname" id="user_surname" aria-describedby="surnameHelp" required>
                         </div>
                         <div class="mb-3">
                             <label for="user_email" class="form-label">Email address</label>
-                            <input type="email" class="form-control" name="user_email" id="user_email" aria-describedby="emailHelp">
+                            <input type="email" class="form-control" name="user_email" id="user_email" aria-describedby="emailHelp" required>
                         </div>
                         <div class="mb-3">
                             <label for="user_password" class="form-label">Password</label>
-                            <input type="password" class="form-control" name="user_password" id="user_password">
+                            <input type="password" class="form-control" name="user_password" id="user_password" required>
                         </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" name="user_check" id="user_check">
                             <label class="form-check-label" for="user_check">Remember me</label>
                         </div>
-                        <button type="submit" class="btn btn-primary" name="reg_submit" value="reg_submit">Submit</button>
+                        <button type="submit" class="btn btn-secondary" name="reg_submit" value="reg_submit">Submit</button>
                     </form>
                 </div>
             </div>
@@ -94,7 +158,7 @@
     </section>
     <!-- Section Register -->
 
-    <?php }elseif(isset($_GET['register'])){ ?>
+    <?php }elseif((isset($_GET['page'])&&$_GET['page']=='login')){ ?>
 
     <!-- Section Login -->
     <section class="bg-warning" id="login">
@@ -105,20 +169,20 @@
             </div>
             <div class="row">
                 <div class="col-8 offset-2">
-                    <form>
+                    <form action="/index.php" method="POST">
                         <div class="mb-3">
-                            <label for="exampleInputEmail1" class="form-label">Email address</label>
-                            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                            <label for="login_email" class="form-label">Email address</label>
+                            <input type="email" class="form-control" name="login_email" id="login_email" aria-describedby="emailHelp" required>
                         </div>
                         <div class="mb-3">
-                            <label for="exampleInputPassword1" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="exampleInputPassword1">
+                            <label for="login_password" class="form-label">Password</label>
+                            <input type="password" class="form-control" name="login_password" id="login_password" required>
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                            <label class="form-check-label" for="exampleCheck1">Remember me</label>
+                            <input type="checkbox" class="form-check-input" name="login_check" id="login_check">
+                            <label class="form-check-label" for="login_check">Remember me</label>
                         </div>
-                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <button type="submit" name="login_submit" class="btn btn-primary">Submit</button>
                     </form>
                 </div>
             </div>
@@ -126,7 +190,7 @@
     </section>
     <!-- Section Login -->
 
-    <?php }elseif(isset($_GET['upload'])){ ?>
+    <?php }elseif((isset($_GET['page'])&&$_GET['page']=='upload')){ ?>
 
     <!-- Section File upload -->
     <section class="bg-success" id="login">
@@ -137,24 +201,24 @@
             </div>
             <div class="row">
                 <div class="col-8 offset-2">
-                    <form>
+                    <form action="/index.php" method="POST">
                         <div class="mb-3">
-                            <label for="exampleInputEmail1" class="form-label">File</label>
-                            <input type="file" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                            <label for="upload_file" class="form-label">File</label>
+                            <input type="file" class="form-control" name="upload_file" id="upload_file" aria-describedby="emailHelp" required>
                         </div>
                         <div class="mb-3">
-                            <label for="exampleInputEmail1" class="form-label">File Name (optional)</label>
-                            <input type="text" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                            <label for="upload_fname" class="form-label">File Name (optional)</label>
+                            <input type="text" class="form-control" name="upload_fname" id="upload_fname" aria-describedby="emailHelp" required>
                         </div>
                         <div class="mb-3">
-                            <label for="exampleInputPassword1" class="form-label">User Password</label>
-                            <input type="password" class="form-control" id="exampleInputPassword1">
+                            <label for="upload_password" class="form-label">User Password</label>
+                            <input type="password" class="form-control" name="upload_password" id="upload_password" required>
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                            <label class="form-check-label" for="exampleCheck1">Private</label>
+                            <input type="checkbox" class="form-check-input" id="upload_check">
+                            <label class="form-check-label" for="upload_check">Private</label>
                         </div>
-                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <button type="submit" name="upload_submit" class="btn btn-primary">Submit</button>
                     </form>
                 </div>
             </div>
@@ -162,7 +226,7 @@
     </section>
     <!-- Section File upload -->
 
-    <?php }elseif(isset($_GET['home'])){ ?>
+    <?php }elseif((isset($_GET['page'])&&$_GET['page']=='home')){ ?>
 
     <!-- Section User Home -->
     <section class="bg-info" id="login">
@@ -182,19 +246,19 @@
                             Name:
                         </div>
                         <div class="col-6">
-                            MyName
+                            <?php echo $_SESSION['user']["USER_NAME"]; ?>
                         </div>
                         <div class="col-6">
                             SurName:
                         </div>
                         <div class="col-6">
-                            MySurName
+                        <?php echo $_SESSION['user']["USER_SURNAME"]; ?>
                         </div>
                         <div class="col-6">
                             Used Disk Space:
                         </div>
                         <div class="col-6">
-                            0000 KB
+                        <?php echo $_SESSION['user']["DISK_AREA"]; ?> KB
                         </div>
                     </div>
                 </div>
