@@ -1,4 +1,7 @@
 <?php
+if(basename($_SERVER['PHP_SELF'])==basename(__FILE__)){
+	exit("Access to this page is prohibited.");
+}
 function post($value){
     return strip_tags(trim($_POST[$value]));
 }
@@ -61,17 +64,16 @@ function register($db){
     }
     else{ 
         $register= $db->prepare("INSERT INTO users(USER_NAME, USER_SURNAME, USER_EMAIL, USER_PASSWORD) VALUES(:new_name, :new_surname, :new_email, :new_password)");
-
         $register->execute(
             array(
                 ':new_name' => post('user_name'),
                 ':new_surname' => post('user_surname'),
                 ':new_email' => post('user_email'),
-                ':new_password' => sha1(md5(post('user_pasword')))
+                ':new_password' => sha1(md5(post('user_password')))
             )
         );
         if($register){
-            $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = ".'post("user_email")'." AND USER_PASSWORD = ".'sha1(md5(post("user_pasword")))')->fetch();
+            $login = $db->query("SELECT * FROM users WHERE USER_EMAIL = ".'post("user_email")'." AND USER_PASSWORD = ".'sha1(md5(post("user_password")))')->fetch();
             $_SESSION['login'] = TRUE;
             $_SESSION['user'] = $login;
             if(post('user_check')=='remember_me'){
