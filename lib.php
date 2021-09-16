@@ -87,13 +87,34 @@ function register($db){
     }
 }
 function upload_file($db){
-    if($_SESSION['login']){
-        if(empty($_POST["upload_fname"]) || empty($_POST["upload_password"]) || empty($_FILES["upload_file"]))  
+    if($_SESSION['login'] && sha1(md5(post('upload_password')))==$_SESSION["user"]["USER_PASSWORD"]){
+        if(empty($_POST["upload_password"]) || empty($_FILES["upload_file"]))  
         {
             $errorMessage = 'All fields are required';
         }
         else{
-            ////
+            if($_FILES["upload_file"]["error"]==UPLOAD_ERR_OK){
+                $tmp_name = $_FILES["upload_file"]["tmp_name"];
+                $name = time()."-".basename($_FILES["upload_file"]["name"]).".internal";
+                global $file_folder;
+                move_uploaded_file($tmp_name, "$file_folder/$name");
+                $new_f= $db->prepare("INSERT INTO files(UserID, WFileName, WFileRealName, WFileSize) VALUES(:u_id, :f_name, :f_r_name, :f_size)");
+                $new_f->execute(
+                    array(
+                        ':u_id' => $_SESSION["user"]["USER_ID"],
+                        ':f_name' => basename($_FILES["upload_file"]["name"]),
+                        ':f_r_name' => $name,
+                        ':f_size' => $_FILES["upload_file"]["size"]
+                    )
+                );
+                //TODO: user disk space update
+                if($new_f){
+                    $successMessage = "New File Uploaded";
+                }
+                else{
+                    $errorMessage = 'File upload ERROR!';
+                }
+            }
         }
     }
     else{

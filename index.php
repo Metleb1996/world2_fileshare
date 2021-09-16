@@ -164,6 +164,7 @@
                     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="POST" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="upload_file" class="form-label">File</label>
+                            <input type="hidden" name="MAX_FILE_SIZE" value="10485760" />
                             <input type="file" class="form-control" name="upload_file" id="upload_file" aria-describedby="emailHelp" required>
                         </div>
                         <div class="mb-3">
